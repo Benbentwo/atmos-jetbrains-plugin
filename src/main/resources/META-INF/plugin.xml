@@ -41,6 +41,8 @@
             serviceImplementation="com.cloudposse.atmos.services.AtmosProjectService"/>
         <projectService
             serviceImplementation="com.cloudposse.atmos.services.AtmosConfigurationService"/>
+        <projectService
+            serviceImplementation="com.cloudposse.atmos.services.AtmosCommandRunner"/>
 
         <!-- Settings UI -->
         <applicationConfigurable
@@ -59,6 +61,17 @@
             language="yaml"
             implementation="com.cloudposse.atmos.navigation.AtmosImportReferenceContributor"/>
 
+        <!-- Run Configuration -->
+        <configurationType
+            implementation="com.cloudposse.atmos.run.AtmosRunConfigurationType"/>
+
+        <!-- Tool Window -->
+        <toolWindow
+            id="Atmos"
+            anchor="right"
+            icon="com.cloudposse.atmos.AtmosIcons.TOOL_WINDOW"
+            factoryClass="com.cloudposse.atmos.toolwindow.AtmosToolWindowFactory"/>
+
         <!-- Notifications -->
         <notificationGroup
             id="Atmos"
@@ -66,6 +79,48 @@
     </extensions>
 
     <actions>
-        <!-- Actions will be added in later phases -->
+        <!-- Atmos Action Group -->
+        <group id="Atmos.ActionGroup"
+               text="Atmos"
+               description="Atmos actions"
+               popup="true"
+               icon="com.cloudposse.atmos.AtmosIcons.ATMOS">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+
+            <action id="Atmos.DescribeStacks"
+                    class="com.cloudposse.atmos.actions.DescribeStacksAction"
+                    text="Describe Stacks"
+                    description="Run atmos describe stacks"/>
+
+            <action id="Atmos.DescribeComponent"
+                    class="com.cloudposse.atmos.actions.DescribeComponentAction"
+                    text="Describe Component..."
+                    description="Run atmos describe component"/>
+
+            <action id="Atmos.ValidateComponent"
+                    class="com.cloudposse.atmos.actions.ValidateComponentAction"
+                    text="Validate Component..."
+                    description="Run atmos validate component"/>
+
+            <separator/>
+
+            <action id="Atmos.TerraformPlan"
+                    class="com.cloudposse.atmos.actions.TerraformPlanAction"
+                    text="Terraform Plan..."
+                    description="Run atmos terraform plan"/>
+
+            <action id="Atmos.TerraformApply"
+                    class="com.cloudposse.atmos.actions.TerraformApplyAction"
+                    text="Terraform Apply..."
+                    description="Run atmos terraform apply"/>
+
+            <separator/>
+
+            <action id="Atmos.RunWorkflow"
+                    class="com.cloudposse.atmos.actions.RunWorkflowAction"
+                    text="Run Workflow..."
+                    description="Run atmos workflow"/>
+        </group>
     </actions>
 </idea-plugin>
