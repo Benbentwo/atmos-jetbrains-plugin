@@ -234,3 +234,38 @@ class DescribeAffectedAction : AtmosContextAction("Describe Affected", "Run 'atm
         executeAtmosCommand(project, "describe", "affected")
     }
 }
+
+/**
+ * Action to describe all stacks.
+ */
+class DescribeStacksAction : AtmosContextAction("Describe Stacks", "Run 'atmos describe stacks'") {
+
+    override fun update(e: AnActionEvent) {
+        val project = e.project
+        e.presentation.isEnabledAndVisible = project != null &&
+                AtmosProjectService.getInstance(project).isAtmosProject
+    }
+
+    override fun actionPerformed(e: AnActionEvent) {
+        val project = e.project ?: return
+        executeAtmosCommand(project, "describe", "stacks")
+    }
+}
+
+/**
+ * Action to run an Atmos workflow.
+ */
+class RunWorkflowAction : AtmosContextAction("Run Workflow", "Run an Atmos workflow") {
+
+    override fun update(e: AnActionEvent) {
+        val project = e.project
+        e.presentation.isEnabledAndVisible = project != null &&
+                AtmosProjectService.getInstance(project).isAtmosProject
+    }
+
+    override fun actionPerformed(e: AnActionEvent) {
+        val project = e.project ?: return
+        // TODO: Show dialog to select workflow
+        executeAtmosCommand(project, "workflow", "--help")
+    }
+}
