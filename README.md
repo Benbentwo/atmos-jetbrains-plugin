@@ -7,13 +7,48 @@ First-class IDE support for [Atmos](https://atmos.tools/) - the ultimate DevOps 
 <!-- Plugin description -->
 ## Features
 
-- **Syntax Highlighting** for Atmos YAML functions (`!env`, `!exec`, `!terraform.output`, etc.)
-- **Navigation** - Cmd+Click on imports to navigate to referenced files
-- **Code Completion** for imports, components, and variables
-- **Inspections** for missing imports and unknown components
-- **Gutter Icons** for inheritance relationships
-- **Tool Window** for browsing stacks and components
-- **Run Configurations** for Atmos CLI commands
+### Syntax Highlighting
+- YAML function highlighting for `!env`, `!exec`, `!include`, `!repo-root`, `!terraform.output`, `!terraform.state`, `!atmos.Component`
+- Distinct visual styling for each function type
+
+### Navigation (Cmd/Ctrl+Click)
+- **Import paths** - Navigate to referenced stack files
+- **Component names** - Navigate to Terraform/Helmfile component directories
+- **Variable keys** - Navigate to `variables.tf` definitions
+- **metadata.component** - Navigate to actual component paths
+- **metadata.inherits** - Navigate to inherited components
+
+### Code Completion
+- Import paths from stacks base directory
+- Component names for Terraform and Helmfile
+- Metadata keys (`type`, `component`, `inherits`, `terraform_workspace`)
+- Settings keys (`spacelift`, `atlantis`, `validation`)
+- YAML function tags
+
+### Inspections & Quick Fixes
+- **Missing imports** - With quick fix to create stack file
+- **Unknown components** - With quick fix to create component scaffold
+- **Circular imports** - Detect and report import cycles
+
+### Gutter Icons
+- Import count indicators
+- Inheritance arrows for components using `metadata.inherits`
+- Abstract vs. real component type indicators
+- Variable override indicators
+
+### Tool Windows
+- **Atmos Explorer** - Browse stacks, components, and workflows in a tree view
+- **Component Inspector** - Real-time resolved values for the component at cursor position
+
+### CLI Integration
+- **Run Configurations** for Atmos commands (terraform plan/apply, describe, validate, workflow)
+- **Context Menu Actions** - Right-click to run Atmos commands on current file/component
+
+### Quick Documentation (F1/Ctrl+Q)
+- Documentation for imports (file preview)
+- Documentation for components (files and variables)
+- Documentation for YAML functions
+- Documentation for metadata and settings keys
 
 ## Getting Started
 
@@ -21,6 +56,8 @@ First-class IDE support for [Atmos](https://atmos.tools/) - the ultimate DevOps 
 2. The plugin will automatically detect the Atmos project
 3. Navigate stack files with Cmd+Click on imports
 4. Configure the Atmos executable path in **Settings > Tools > Atmos**
+5. Use the Atmos tool window to browse stacks and components
+6. Right-click for context actions like "Describe Component" or "Terraform Plan"
 
 <!-- Plugin description end -->
 
@@ -36,8 +73,16 @@ First-class IDE support for [Atmos](https://atmos.tools/) - the ultimate DevOps 
 ### Manual Installation
 
 1. Download the latest release from the [Releases](https://github.com/cloudposse/atmos-jetbrains-plugin/releases) page
-2. Go to **Settings/Preferences > Plugins > ⚙️ > Install Plugin from Disk...**
+2. Go to **Settings/Preferences > Plugins > Settings icon > Install Plugin from Disk...**
 3. Select the downloaded `.zip` file
+
+## Keyboard Shortcuts
+
+| Action | Mac | Windows/Linux |
+|--------|-----|---------------|
+| Navigate to Definition | Cmd+Click | Ctrl+Click |
+| Quick Documentation | F1 | Ctrl+Q |
+| Open Atmos Inspector | Cmd+Shift+I | Ctrl+Shift+I |
 
 ## Development
 
