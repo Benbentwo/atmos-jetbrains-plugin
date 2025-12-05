@@ -2,6 +2,9 @@ name-template: 'v$RESOLVED_VERSION'
 tag-template: 'v$RESOLVED_VERSION'
 
 categories:
+  - title: 'Breaking Changes'
+    labels:
+      - 'major'
   - title: 'Features'
     labels:
       - 'feature'
@@ -28,50 +31,13 @@ version-resolver:
   major:
     labels:
       - 'major'
-      - 'breaking'
   minor:
     labels:
       - 'minor'
-      - 'feature'
-      - 'enhancement'
   patch:
     labels:
       - 'patch'
-      - 'fix'
-      - 'bugfix'
-      - 'bug'
-      - 'chore'
-      - 'maintenance'
-      - 'documentation'
-  default: patch
-
-autolabeler:
-  - label: 'documentation'
-    files:
-      - '*.md'
-      - 'docs/**/*'
-  - label: 'feature'
-    branch:
-      - '/feature\/.+/'
-    title:
-      - '/^feat(\(.+\))?:/'
-      - '/^add(\(.+\))?:/'
-  - label: 'fix'
-    branch:
-      - '/fix\/.+/'
-      - '/bugfix\/.+/'
-    title:
-      - '/^fix(\(.+\))?:/'
-  - label: 'chore'
-    branch:
-      - '/chore\/.+/'
-    title:
-      - '/^chore(\(.+\))?:/'
-  - label: 'dependencies'
-    files:
-      - 'gradle/**/*'
-      - 'build.gradle.kts'
-      - 'gradle.properties'
+  default: minor
 
 template: |
   ## What's Changed
