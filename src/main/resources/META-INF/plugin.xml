@@ -63,9 +63,53 @@
         <notificationGroup
             id="Atmos"
             displayType="BALLOON"/>
+
+        <!-- Run Configuration -->
+        <configurationType
+            implementation="com.cloudposse.atmos.run.AtmosRunConfigurationType"/>
+
+        <runConfigurationProducer
+            implementation="com.cloudposse.atmos.run.AtmosRunConfigurationProducer"/>
+
+        <!-- Tool Window -->
+        <toolWindow
+            id="Atmos"
+            anchor="right"
+            icon="com.cloudposse.atmos.AtmosIcons.TOOL_WINDOW"
+            factoryClass="com.cloudposse.atmos.toolwindow.AtmosToolWindowFactory"/>
     </extensions>
 
     <actions>
-        <!-- Actions will be added in later phases -->
+        <!-- Atmos Action Group -->
+        <group id="Atmos.ContextMenu" text="Atmos" popup="true" icon="com.cloudposse.atmos.AtmosIcons.ATMOS">
+            <action id="Atmos.DescribeComponent"
+                    class="com.cloudposse.atmos.actions.DescribeComponentAction"
+                    text="Describe Component"
+                    description="Run atmos describe component"/>
+            <action id="Atmos.ValidateComponent"
+                    class="com.cloudposse.atmos.actions.ValidateComponentAction"
+                    text="Validate Component"
+                    description="Run atmos validate component"/>
+            <separator/>
+            <action id="Atmos.TerraformPlan"
+                    class="com.cloudposse.atmos.actions.TerraformPlanAction"
+                    text="Terraform Plan"
+                    description="Run atmos terraform plan"/>
+            <action id="Atmos.TerraformApply"
+                    class="com.cloudposse.atmos.actions.TerraformApplyAction"
+                    text="Terraform Apply"
+                    description="Run atmos terraform apply"/>
+            <separator/>
+            <action id="Atmos.DescribeStack"
+                    class="com.cloudposse.atmos.actions.DescribeStackAction"
+                    text="Describe Stack"
+                    description="Run atmos describe stacks for this stack"/>
+
+            <!-- Add to Editor Popup Menu -->
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+
+            <!-- Add to Project View Popup Menu -->
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </group>
     </actions>
 </idea-plugin>

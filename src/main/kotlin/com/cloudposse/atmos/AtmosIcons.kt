@@ -1,5 +1,6 @@
 package com.cloudposse.atmos
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.util.IconLoader
 import javax.swing.Icon
 
@@ -22,4 +23,17 @@ object AtmosIcons {
 
     @JvmField
     val INHERIT_DOWN: Icon = IconLoader.getIcon("/icons/atmos.svg", AtmosIcons::class.java)
+
+    // Run configuration icons - using standard IntelliJ icons with fallback to Atmos icon
+    @JvmField
+    val RUN: Icon = AllIcons.Actions.Execute
+
+    @JvmField
+    val RUN_CONFIGURATION: Icon = IconLoader.getIcon("/icons/atmos.svg", AtmosIcons::class.java)
+
+    @JvmField
+    val TERRAFORM: Icon = IconLoader.getIcon("/icons/atmos.svg", AtmosIcons::class.java)
+
+    @JvmField
+    val WORKFLOW: Icon = AllIcons.Actions.Execute
 }
