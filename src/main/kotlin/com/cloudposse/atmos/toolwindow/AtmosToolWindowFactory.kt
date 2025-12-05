@@ -1,6 +1,5 @@
 package com.cloudposse.atmos.toolwindow
 
-import com.cloudposse.atmos.AtmosBundle
 import com.cloudposse.atmos.services.AtmosProjectService
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -10,12 +9,13 @@ import com.intellij.ui.content.ContentFactory
 
 /**
  * Factory for creating the Atmos tool window.
+ * Provides a hierarchical view of stacks and components.
  */
 class AtmosToolWindowFactory : ToolWindowFactory, DumbAware {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val atmosPanel = AtmosToolWindowPanel(project)
-        val content = ContentFactory.getInstance().createContent(atmosPanel, "", false)
+        val panel = AtmosToolWindowPanel(project)
+        val content = ContentFactory.getInstance().createContent(panel, "", false)
         toolWindow.contentManager.addContent(content)
     }
 
