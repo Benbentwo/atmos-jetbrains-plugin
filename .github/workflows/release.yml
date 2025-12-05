@@ -8,6 +8,8 @@ jobs:
   release:
     name: Build and Publish Plugin
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -36,11 +38,9 @@ jobs:
           echo "name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
 
       - name: Upload Plugin to Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.artifact.outputs.path }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sign Plugin
         run: ./gradlew signPlugin
