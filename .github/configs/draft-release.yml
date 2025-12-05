@@ -1,0 +1,65 @@
+filter-by-commitish: true
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+version-resolver:
+  major:
+    labels:
+      - 'major'
+  minor:
+    labels:
+      - 'minor'
+      - 'enhancement'
+      - 'feature'
+  patch:
+    labels:
+      - 'auto-update'
+      - 'patch'
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+      - 'hotfix'
+      - 'no-release'
+  default: minor
+
+categories:
+  - title: '🚀 Enhancements'
+    labels:
+      - 'enhancement'
+      - 'feature'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+      - 'hotfix'
+  - title: '📚 Documentation'
+    labels:
+      - 'documentation'
+      - 'docs'
+  - title: '🧹 Maintenance'
+    labels:
+      - 'chore'
+      - 'maintenance'
+      - 'dependencies'
+  - title: '🤖 Automatic Updates'
+    labels:
+      - 'auto-update'
+
+change-template: |
+  <details>
+  <summary>$TITLE @$AUTHOR (#$NUMBER)</summary>
+
+  $BODY
+  </details>
+
+template: |
+  $CHANGES
+
+replacers:
+  # Remove irrelevant information from Renovate bot
+  - search: '/(?<=---\s)\s*^#.*(Renovate configuration|Configuration)(?:.|\\n)*?This PR has been generated .*/gm'
+    replace: ''
+  # Remove Renovate bot banner image
+  - search: '/\[\[^\[\]]*Renovate\][^\[\]]*\](\([^)]*\))?\s*\n+/gm'
+    replace: ''
