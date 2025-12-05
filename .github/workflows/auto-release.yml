@@ -18,4 +18,5 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           publish: true
+          prerelease: false
           config-name: configs/draft-release.yml
