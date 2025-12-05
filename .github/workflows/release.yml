@@ -38,9 +38,10 @@ jobs:
           echo "name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
 
       - name: Upload Plugin to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ steps.artifact.outputs.path }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" "${{ steps.artifact.outputs.path }}" --clobber
 
       - name: Sign Plugin
         run: ./gradlew signPlugin
