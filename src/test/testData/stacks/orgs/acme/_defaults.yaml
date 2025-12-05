@@ -1,0 +1,11 @@
+# Default values for ACME organization
+vars:
+  tenant: acme
+  namespace: acme
+  tags:
+    Organization: ACME Corp
+    ManagedBy: Atmos
+
+settings:
+  spacelift:
+    workspace_enabled: false

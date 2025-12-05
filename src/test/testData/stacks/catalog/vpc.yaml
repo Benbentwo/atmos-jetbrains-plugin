@@ -1,0 +1,12 @@
+# Catalog VPC component definition
+components:
+  terraform:
+    vpc:
+      metadata:
+        type: abstract
+      vars:
+        vpc_cidr: "10.0.0.0/8"
+        enable_nat_gateway: true
+        single_nat_gateway: false
+        enable_dns_hostnames: true
+        enable_dns_support: true

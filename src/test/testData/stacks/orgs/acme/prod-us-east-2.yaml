@@ -1,0 +1,30 @@
+# Production stack for ACME in US-East-2
+import:
+  - catalog/vpc
+  - orgs/acme/_defaults
+
+vars:
+  tenant: acme
+  environment: prod
+  stage: use2
+  region: us-east-2
+
+components:
+  terraform:
+    vpc:
+      metadata:
+        component: networking/vpc
+        inherits:
+          - vpc
+      vars:
+        vpc_cidr: "10.100.0.0/16"
+        availability_zones:
+          - us-east-2a
+          - us-east-2b
+          - us-east-2c
+      settings:
+        spacelift:
+          workspace_enabled: true
+      env:
+        AWS_REGION: !env AWS_REGION
+        TF_VAR_custom: !exec echo "custom-value"
