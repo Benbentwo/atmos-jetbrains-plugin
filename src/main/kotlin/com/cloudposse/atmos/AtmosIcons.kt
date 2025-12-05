@@ -15,14 +15,29 @@ object AtmosIcons {
     val STACK: Icon = IconLoader.getIcon("/icons/atmos.svg", AtmosIcons::class.java)
 
     @JvmField
+    val STACK_FILE: Icon = AllIcons.FileTypes.Yaml
+
+    @JvmField
+    val STACK_FOLDER: Icon = AllIcons.Nodes.Folder
+
+    @JvmField
     val COMPONENT: Icon = IconLoader.getIcon("/icons/atmos.svg", AtmosIcons::class.java)
+
+    @JvmField
+    val ABSTRACT_COMPONENT: Icon = AllIcons.Nodes.AbstractClass
+
+    @JvmField
+    val REAL_COMPONENT: Icon = AllIcons.Nodes.Class
 
     // Inheritance icons (will use standard IntelliJ icons for now)
     @JvmField
-    val INHERIT_UP: Icon = IconLoader.getIcon("/icons/atmos.svg", AtmosIcons::class.java)
+    val INHERIT_UP: Icon = AllIcons.Gutter.OverridingMethod
 
     @JvmField
-    val INHERIT_DOWN: Icon = IconLoader.getIcon("/icons/atmos.svg", AtmosIcons::class.java)
+    val INHERIT_DOWN: Icon = AllIcons.Gutter.OverridenMethod
+
+    @JvmField
+    val IMPORT: Icon = AllIcons.Nodes.Include
 
     // Run configuration icons - using standard IntelliJ icons with fallback to Atmos icon
     @JvmField
@@ -36,4 +51,19 @@ object AtmosIcons {
 
     @JvmField
     val WORKFLOW: Icon = AllIcons.Actions.Execute
+
+    @JvmField
+    val REFRESH: Icon = AllIcons.Actions.Refresh
+
+    @JvmField
+    val VALID: Icon = AllIcons.General.InspectionsOK
+
+    @JvmField
+    val VARIABLE: Icon = AllIcons.Nodes.Variable
+
+    @JvmField
+    val SETTINGS: Icon = AllIcons.General.Settings
+
+    @JvmField
+    val METADATA: Icon = AllIcons.Nodes.Tag
 }

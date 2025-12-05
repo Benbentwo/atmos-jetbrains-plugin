@@ -2,11 +2,10 @@ package com.cloudposse.atmos.actions
 
 import com.cloudposse.atmos.AtmosBundle
 import com.cloudposse.atmos.AtmosIcons
-import com.cloudposse.atmos.run.AtmosCommandRunner
 import com.cloudposse.atmos.run.AtmosCommandType
-import com.cloudposse.atmos.run.AtmosConfigurationFactory
 import com.cloudposse.atmos.run.AtmosRunConfiguration
 import com.cloudposse.atmos.run.AtmosRunConfigurationType
+import com.cloudposse.atmos.services.AtmosCommandRunner
 import com.cloudposse.atmos.services.AtmosConfigurationService
 import com.cloudposse.atmos.services.AtmosProjectService
 import com.intellij.execution.ProgramRunnerUtil
@@ -140,13 +139,12 @@ class DescribeComponentAction : AtmosContextAction(
             return
         }
 
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val result = AtmosCommandRunner.describeComponent(project, context.componentName, context.stackName)
-
-            ApplicationManager.getApplication().invokeLater {
-                showResultInToolWindow(project, result, "Describe Component: ${context.componentName}")
+        AtmosCommandRunner.getInstance(project).describeComponent(context.componentName, context.stackName)
+            .thenAccept { result ->
+                ApplicationManager.getApplication().invokeLater {
+                    showResultInToolWindow(project, result, "Describe Component: ${context.componentName}")
+                }
             }
-        }
     }
 
     private fun showResultInToolWindow(
@@ -157,7 +155,7 @@ class DescribeComponentAction : AtmosContextAction(
         val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Atmos")
         toolWindow?.show {
             // The console is in the tool window - for now just show a message
-            if (!result.success) {
+            if (!result.isSuccess) {
                 Messages.showErrorDialog(project, result.stderr, title)
             }
         }
@@ -185,25 +183,24 @@ class ValidateComponentAction : AtmosContextAction(
             return
         }
 
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val result = AtmosCommandRunner.validateComponent(project, context.componentName, context.stackName)
-
-            ApplicationManager.getApplication().invokeLater {
-                if (result.success) {
-                    Messages.showInfoMessage(
-                        project,
-                        AtmosBundle.message("action.validate.component.success", context.componentName),
-                        AtmosBundle.message("action.validate.component")
-                    )
-                } else {
-                    Messages.showErrorDialog(
-                        project,
-                        result.stderr.ifBlank { result.stdout },
-                        AtmosBundle.message("action.validate.component")
-                    )
+        AtmosCommandRunner.getInstance(project).validateComponent(context.componentName, context.stackName)
+            .thenAccept { result ->
+                ApplicationManager.getApplication().invokeLater {
+                    if (result.isSuccess) {
+                        Messages.showInfoMessage(
+                            project,
+                            AtmosBundle.message("action.validate.component.success", context.componentName),
+                            AtmosBundle.message("action.validate.component")
+                        )
+                    } else {
+                        Messages.showErrorDialog(
+                            project,
+                            result.stderr.ifBlank { result.stdout },
+                            AtmosBundle.message("action.validate.component")
+                        )
+                    }
                 }
             }
-        }
     }
 }
 
@@ -346,17 +343,16 @@ class DescribeStackAction : AtmosContextAction(
             return
         }
 
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val result = AtmosCommandRunner.describeStacks(project, stackName)
+        AtmosCommandRunner.getInstance(project).describeStacks()
+            .thenAccept { result ->
+                ApplicationManager.getApplication().invokeLater {
+                    val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Atmos")
+                    toolWindow?.show()
 
-            ApplicationManager.getApplication().invokeLater {
-                val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Atmos")
-                toolWindow?.show()
-
-                if (!result.success) {
-                    Messages.showErrorDialog(project, result.stderr, "Describe Stack: $stackName")
+                    if (!result.isSuccess) {
+                        Messages.showErrorDialog(project, result.stderr, "Describe Stack: $stackName")
+                    }
                 }
             }
-        }
     }
 }

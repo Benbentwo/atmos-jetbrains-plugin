@@ -302,7 +302,7 @@ class AtmosToolWindowPanel(private val project: Project) : JPanel(BorderLayout()
         stack: String = ""
     ) {
         val runManager = RunManager.getInstance(project)
-        val configType = AtmosRunConfigurationType.INSTANCE
+        val configType = AtmosRunConfigurationType.getInstance()
         val settings = runManager.createConfiguration(name, configType.configurationFactories[0])
         val config = settings.configuration as AtmosRunConfiguration
         config.commandType = commandType
