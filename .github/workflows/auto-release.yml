@@ -1,0 +1,21 @@
+name: auto-release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  auto-release:
+    name: Auto Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: cloudposse/github-action-auto-release@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          publish: true
+          config-name: configs/draft-release.yml
