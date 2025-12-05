@@ -20,17 +20,16 @@ jobs:
         with:
           distribution: zulu
           java-version: 17
+          cache: gradle
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-home-cache-cleanup: true
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Build Plugin
-        run: ./gradlew buildPlugin
-
-      - name: Run Tests
-        run: ./gradlew check
+      - name: Build Plugin and Run Tests
+        run: ./gradlew buildPlugin check --build-cache
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -62,11 +61,21 @@ jobs:
         with:
           distribution: zulu
           java-version: 17
+          cache: gradle
+
+      - name: Cache IntelliJ Platform IDEs
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pluginVerifier/ides
+          key: ide-cache-${{ runner.os }}-${{ hashFiles('gradle.properties') }}
+          restore-keys: |
+            ide-cache-${{ runner.os }}-
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-home-cache-cleanup: true
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Run Plugin Verifier
-        run: ./gradlew verifyPlugin
+        run: ./gradlew verifyPlugin --build-cache
