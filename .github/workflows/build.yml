@@ -32,9 +32,6 @@ jobs:
       - name: Run Tests
         run: ./gradlew check
 
-      - name: Verify Plugin
-        run: ./gradlew verifyPlugin
-
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -47,6 +44,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: false
+
       - name: Checkout
         uses: actions/checkout@v4
 
