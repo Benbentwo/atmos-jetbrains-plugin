@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Grey outline alien icon for toolbars -->
+  <g fill="none" stroke="#6E6E6E" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Head outline -->
+    <path d="M8 1.5C4.5 1.5 2 4.5 2 8c0 2.5 1.5 5 3.5 6.5.5.4 1.5.5 2.5.5s2-.1 2.5-.5c2-1.5 3.5-4 3.5-6.5 0-3.5-2.5-6.5-6-6.5z"/>
+    <!-- Left eye -->
+    <ellipse cx="5.5" cy="7" rx="1.8" ry="2.2" fill="#6E6E6E"/>
+    <!-- Right eye -->
+    <ellipse cx="10.5" cy="7" rx="1.8" ry="2.2" fill="#6E6E6E"/>
+    <!-- Smile -->
+    <path d="M6 11.5c.8.8 3.2.8 4 0"/>
+  </g>
+</svg>

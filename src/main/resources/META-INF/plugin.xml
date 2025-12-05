@@ -1,0 +1,71 @@
+<idea-plugin>
+    <id>com.cloudposse.atmos</id>
+    <name>Atmos</name>
+    <vendor email="support@cloudposse.com" url="https://cloudposse.com">Cloud Posse</vendor>
+
+    <description><![CDATA[
+        First-class IDE support for <a href="https://atmos.tools/">Atmos</a> -
+        the ultimate DevOps framework for Terraform, OpenTofu, Packer, and Helmfile orchestration.
+
+        <h2>Features</h2>
+        <ul>
+            <li>Syntax highlighting for YAML functions (!env, !exec, !terraform.output, etc.)</li>
+            <li>Navigation to imports, components, and variable definitions (Cmd+Click)</li>
+            <li>Code completion for imports, components, and variables</li>
+            <li>Inspections for missing imports, unknown components, and more</li>
+            <li>Gutter icons for inheritance relationships</li>
+            <li>Tool window for browsing stacks and components</li>
+            <li>Run configurations for Atmos CLI commands</li>
+        </ul>
+
+        <h2>Getting Started</h2>
+        <ol>
+            <li>Open a project containing an <code>atmos.yaml</code> configuration file</li>
+            <li>The plugin will automatically detect the Atmos project</li>
+            <li>Navigate stack files with Cmd+Click on imports</li>
+            <li>Configure the Atmos executable path in Settings &gt; Tools &gt; Atmos</li>
+        </ol>
+    ]]></description>
+
+    <!-- Platform dependencies -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.yaml</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Application Services -->
+        <applicationService
+            serviceImplementation="com.cloudposse.atmos.settings.AtmosSettings"/>
+
+        <!-- Project Services -->
+        <projectService
+            serviceImplementation="com.cloudposse.atmos.services.AtmosProjectService"/>
+        <projectService
+            serviceImplementation="com.cloudposse.atmos.services.AtmosConfigurationService"/>
+
+        <!-- Settings UI -->
+        <applicationConfigurable
+            parentId="tools"
+            instance="com.cloudposse.atmos.settings.AtmosSettingsConfigurable"
+            id="com.cloudposse.atmos.settings"
+            displayName="Atmos"/>
+
+        <!-- Language Support -->
+        <annotator
+            language="yaml"
+            implementationClass="com.cloudposse.atmos.language.yaml.AtmosYamlFunctionAnnotator"/>
+
+        <!-- Navigation -->
+        <psi.referenceContributor
+            language="yaml"
+            implementation="com.cloudposse.atmos.navigation.AtmosImportReferenceContributor"/>
+
+        <!-- Notifications -->
+        <notificationGroup
+            id="Atmos"
+            displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <!-- Actions will be added in later phases -->
+    </actions>
+</idea-plugin>
