@@ -9,7 +9,12 @@ import com.intellij.ui.content.ContentFactory
 
 /**
  * Factory for creating the Atmos tool window.
- * Provides a hierarchical view of stacks and components.
+ *
+ * The tool window displays:
+ * - Stacks tree: Hierarchical view of all stacks and their components
+ * - Components tree: All available components with their types
+ * - Workflows: Available workflows from workflows.base_path
+ * - Console: Output from recent Atmos commands
  */
 class AtmosToolWindowFactory : ToolWindowFactory, DumbAware {
 

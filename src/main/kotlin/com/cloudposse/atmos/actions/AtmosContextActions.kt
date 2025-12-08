@@ -1,23 +1,26 @@
 package com.cloudposse.atmos.actions
 
+import com.cloudposse.atmos.AtmosBundle
 import com.cloudposse.atmos.AtmosIcons
+import com.cloudposse.atmos.run.AtmosCommandType
+import com.cloudposse.atmos.run.AtmosRunConfiguration
+import com.cloudposse.atmos.run.AtmosRunConfigurationType
+import com.cloudposse.atmos.services.AtmosCommandRunner
+import com.cloudposse.atmos.services.AtmosConfigurationService
 import com.cloudposse.atmos.services.AtmosProjectService
-import com.cloudposse.atmos.settings.AtmosSettings
-import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.process.ProcessHandlerFactory
-import com.intellij.execution.process.ProcessTerminatedListener
-import com.intellij.execution.ui.ConsoleView
+import com.intellij.execution.ProgramRunnerUtil
+import com.intellij.execution.RunManager
+import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.wm.ToolWindow
+import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.ToolWindowManager
-import com.intellij.psi.PsiElement
-import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLMapping
@@ -27,245 +30,329 @@ import org.jetbrains.yaml.psi.YAMLMapping
  */
 abstract class AtmosContextAction(
     text: String,
-    description: String? = null
-) : AnAction(text, description, AtmosIcons.ATMOS) {
+    description: String,
+    icon: javax.swing.Icon?
+) : AnAction(text, description, icon), DumbAware {
 
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
         val project = e.project
-        val file = e.getData(CommonDataKeys.VIRTUAL_FILE)
+        val file = e.getData(CommonDataKeys.PSI_FILE) as? YAMLFile
 
         e.presentation.isEnabledAndVisible = project != null &&
                 file != null &&
-                AtmosProjectService.getInstance(project).isAtmosProject &&
-                (AtmosProjectService.getInstance(project).isStackFile(file) ||
-                        AtmosProjectService.getInstance(project).isStackTemplateFile(file))
+                AtmosProjectService.getInstance(project).isStackFile(file.virtualFile)
     }
 
-    protected fun getAtmosPath(): String {
-        val settings = AtmosSettings.getInstance()
-        return settings.atmosExecutablePath.ifEmpty { "atmos" }
-    }
+    /**
+     * Finds component context from the current caret position.
+     */
+    protected fun findComponentContext(e: AnActionEvent): ComponentContext? {
+        val editor = e.getData(CommonDataKeys.EDITOR) ?: return null
+        val file = e.getData(CommonDataKeys.PSI_FILE) as? YAMLFile ?: return null
+        val project = e.project ?: return null
 
-    protected fun executeAtmosCommand(project: Project, vararg args: String) {
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val commandLine = GeneralCommandLine(getAtmosPath(), *args)
-            commandLine.setWorkDirectory(project.basePath)
-
-            val processHandler = ProcessHandlerFactory.getInstance().createColoredProcessHandler(commandLine)
-            ProcessTerminatedListener.attach(processHandler)
-
-            ApplicationManager.getApplication().invokeLater {
-                val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Run")
-                toolWindow?.show()
-            }
-
-            processHandler.startNotify()
-        }
-    }
-
-    protected fun findComponentContext(event: AnActionEvent): ComponentContext? {
-        val editor = event.getData(CommonDataKeys.EDITOR) ?: return null
-        val psiFile = event.getData(CommonDataKeys.PSI_FILE) as? YAMLFile ?: return null
         val offset = editor.caretModel.offset
-        val element = psiFile.findElementAt(offset) ?: return null
+        var element = file.findElementAt(offset) ?: return null
 
-        return findComponentFromElement(element)
-    }
-
-    private fun findComponentFromElement(element: PsiElement): ComponentContext? {
-        var current: PsiElement? = element
-        var componentName: String? = null
-        var componentType: String? = null
-
-        while (current != null) {
-            if (current is YAMLKeyValue) {
-                when (current.keyText) {
-                    "terraform" -> componentType = "terraform"
-                    "helmfile" -> componentType = "helmfile"
-                    "components" -> break
-                    else -> {
-                        if (componentType != null && componentName == null) {
-                            componentName = current.keyText
+        // Walk up to find component context
+        while (element.parent != null) {
+            if (element is YAMLKeyValue) {
+                val parent = element.parent?.parent
+                if (parent is YAMLKeyValue) {
+                    val parentKey = parent.keyText
+                    if (parentKey == "terraform" || parentKey == "helmfile") {
+                        val grandParent = parent.parent?.parent
+                        if (grandParent is YAMLKeyValue && grandParent.keyText == "components") {
+                            val stackName = deriveStackName(file, project)
+                            return ComponentContext(
+                                componentName = element.keyText,
+                                componentType = parentKey,
+                                stackName = stackName ?: ""
+                            )
                         }
                     }
                 }
             }
-            current = current.parent
+            element = element.parent ?: break
         }
 
-        if (componentName == null) return null
+        return null
+    }
 
-        return ComponentContext(componentName, componentType ?: "terraform")
+    /**
+     * Derives the stack name from the file path.
+     */
+    protected fun deriveStackName(file: YAMLFile, project: com.intellij.openapi.project.Project): String? {
+        val configService = AtmosConfigurationService.getInstance(project)
+        val projectService = AtmosProjectService.getInstance(project)
+
+        val stacksBasePath = configService.getStacksBasePath() ?: return null
+        val stacksDir = projectService.resolveProjectPath(stacksBasePath) ?: return null
+        val filePath = file.virtualFile?.path ?: return null
+        val stacksDirPath = stacksDir.path
+
+        if (!filePath.startsWith(stacksDirPath)) {
+            return null
+        }
+
+        var relativePath = filePath.removePrefix(stacksDirPath).removePrefix("/")
+        relativePath = relativePath
+            .removeSuffix(".yaml.tmpl")
+            .removeSuffix(".yml.tmpl")
+            .removeSuffix(".yaml")
+            .removeSuffix(".yml")
+
+        return if (relativePath.startsWith("catalog/") || relativePath.startsWith("mixins/")) {
+            relativePath
+        } else {
+            relativePath.replace("/", "-")
+        }
     }
 
     data class ComponentContext(
         val componentName: String,
-        val componentType: String
+        val componentType: String,
+        val stackName: String
     )
+}
+
+/**
+ * Action to run "atmos describe component" for the current component.
+ */
+class DescribeComponentAction : AtmosContextAction(
+    AtmosBundle.message("action.describe.component"),
+    AtmosBundle.message("action.describe.component.description"),
+    AllIcons.Actions.Preview
+) {
+    override fun actionPerformed(e: AnActionEvent) {
+        val project = e.project ?: return
+        val context = findComponentContext(e)
+
+        if (context == null) {
+            Messages.showInfoMessage(
+                project,
+                AtmosBundle.message("action.no.component.context"),
+                AtmosBundle.message("action.describe.component")
+            )
+            return
+        }
+
+        AtmosCommandRunner.getInstance(project).describeComponent(context.componentName, context.stackName)
+            .thenAccept { result ->
+                ApplicationManager.getApplication().invokeLater {
+                    showResultInToolWindow(project, result, "Describe Component: ${context.componentName}")
+                }
+            }
+    }
+
+    private fun showResultInToolWindow(
+        project: com.intellij.openapi.project.Project,
+        result: AtmosCommandRunner.CommandResult,
+        title: String
+    ) {
+        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Atmos")
+        toolWindow?.show {
+            // The console is in the tool window - for now just show a message
+            if (!result.isSuccess) {
+                Messages.showErrorDialog(project, result.stderr, title)
+            }
+        }
+    }
+}
+
+/**
+ * Action to run "atmos validate component" for the current component.
+ */
+class ValidateComponentAction : AtmosContextAction(
+    AtmosBundle.message("action.validate.component"),
+    AtmosBundle.message("action.validate.component.description"),
+    AllIcons.Actions.Checked
+) {
+    override fun actionPerformed(e: AnActionEvent) {
+        val project = e.project ?: return
+        val context = findComponentContext(e)
+
+        if (context == null) {
+            Messages.showInfoMessage(
+                project,
+                AtmosBundle.message("action.no.component.context"),
+                AtmosBundle.message("action.validate.component")
+            )
+            return
+        }
+
+        AtmosCommandRunner.getInstance(project).validateComponent(context.componentName, context.stackName)
+            .thenAccept { result ->
+                ApplicationManager.getApplication().invokeLater {
+                    if (result.isSuccess) {
+                        Messages.showInfoMessage(
+                            project,
+                            AtmosBundle.message("action.validate.component.success", context.componentName),
+                            AtmosBundle.message("action.validate.component")
+                        )
+                    } else {
+                        Messages.showErrorDialog(
+                            project,
+                            result.stderr.ifBlank { result.stdout },
+                            AtmosBundle.message("action.validate.component")
+                        )
+                    }
+                }
+            }
+    }
+}
+
+/**
+ * Action to run "atmos terraform plan" for the current component.
+ */
+class TerraformPlanAction : AtmosContextAction(
+    AtmosBundle.message("action.terraform.plan"),
+    AtmosBundle.message("action.terraform.plan.description"),
+    AllIcons.Actions.Execute
+) {
+    override fun actionPerformed(e: AnActionEvent) {
+        val project = e.project ?: return
+        val context = findComponentContext(e)
+
+        if (context == null) {
+            Messages.showInfoMessage(
+                project,
+                AtmosBundle.message("action.no.component.context"),
+                AtmosBundle.message("action.terraform.plan")
+            )
+            return
+        }
+
+        runAtmosCommand(project, context, AtmosCommandType.TERRAFORM_PLAN)
+    }
+
+    private fun runAtmosCommand(
+        project: com.intellij.openapi.project.Project,
+        context: ComponentContext,
+        commandType: AtmosCommandType
+    ) {
+        val runManager = RunManager.getInstance(project)
+        val configurationType = AtmosRunConfigurationType.getInstance()
+        val factory = configurationType.configurationFactories[0]
+
+        val configName = "atmos ${commandType.command} ${context.componentName} -s ${context.stackName}"
+        val settings = runManager.createConfiguration(configName, factory)
+        val configuration = settings.configuration as AtmosRunConfiguration
+
+        configuration.commandType = commandType
+        configuration.component = context.componentName
+        configuration.stack = context.stackName
+        configuration.workingDirectory = project.basePath ?: ""
+
+        runManager.addConfiguration(settings)
+        runManager.selectedConfiguration = settings
+
+        ProgramRunnerUtil.executeConfiguration(settings, DefaultRunExecutor.getRunExecutorInstance())
+    }
+}
+
+/**
+ * Action to run "atmos terraform apply" for the current component.
+ */
+class TerraformApplyAction : AtmosContextAction(
+    AtmosBundle.message("action.terraform.apply"),
+    AtmosBundle.message("action.terraform.apply.description"),
+    AllIcons.Actions.Commit
+) {
+    override fun actionPerformed(e: AnActionEvent) {
+        val project = e.project ?: return
+        val context = findComponentContext(e)
+
+        if (context == null) {
+            Messages.showInfoMessage(
+                project,
+                AtmosBundle.message("action.no.component.context"),
+                AtmosBundle.message("action.terraform.apply")
+            )
+            return
+        }
+
+        // Confirm before apply
+        val confirmed = Messages.showYesNoDialog(
+            project,
+            AtmosBundle.message("action.terraform.apply.confirm", context.componentName, context.stackName),
+            AtmosBundle.message("action.terraform.apply"),
+            Messages.getQuestionIcon()
+        )
+
+        if (confirmed == Messages.YES) {
+            runAtmosCommand(project, context, AtmosCommandType.TERRAFORM_APPLY)
+        }
+    }
+
+    private fun runAtmosCommand(
+        project: com.intellij.openapi.project.Project,
+        context: ComponentContext,
+        commandType: AtmosCommandType
+    ) {
+        val runManager = RunManager.getInstance(project)
+        val configurationType = AtmosRunConfigurationType.getInstance()
+        val factory = configurationType.configurationFactories[0]
+
+        val configName = "atmos ${commandType.command} ${context.componentName} -s ${context.stackName}"
+        val settings = runManager.createConfiguration(configName, factory)
+        val configuration = settings.configuration as AtmosRunConfiguration
+
+        configuration.commandType = commandType
+        configuration.component = context.componentName
+        configuration.stack = context.stackName
+        configuration.workingDirectory = project.basePath ?: ""
+
+        runManager.addConfiguration(settings)
+        runManager.selectedConfiguration = settings
+
+        ProgramRunnerUtil.executeConfiguration(settings, DefaultRunExecutor.getRunExecutorInstance())
+    }
 }
 
 /**
  * Action to describe the current stack.
  */
-class DescribeStackAction : AtmosContextAction("Describe This Stack", "Run 'atmos describe stacks' for the current file") {
-
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val file = e.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
-        val stackName = file.nameWithoutExtension
-
-        executeAtmosCommand(project, "describe", "stacks", "--stack", stackName)
-    }
-}
-
-/**
- * Action to describe the current component.
- */
-class DescribeComponentAction : AtmosContextAction("Describe Component", "Run 'atmos describe component' for the component at cursor") {
-
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        if (!e.presentation.isEnabledAndVisible) return
-
-        val context = findComponentContext(e)
-        e.presentation.isEnabledAndVisible = context != null
-        if (context != null) {
-            e.presentation.text = "Describe Component '${context.componentName}'"
-        }
-    }
-
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val file = e.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
-        val context = findComponentContext(e) ?: return
-        val stackName = file.nameWithoutExtension
-
-        executeAtmosCommand(project, "describe", "component", context.componentName, "-s", stackName)
-    }
-}
-
-/**
- * Action to validate the current component.
- */
-class ValidateComponentAction : AtmosContextAction("Validate Component", "Run 'atmos validate component' for the component at cursor") {
-
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        if (!e.presentation.isEnabledAndVisible) return
-
-        val context = findComponentContext(e)
-        e.presentation.isEnabledAndVisible = context != null
-        if (context != null) {
-            e.presentation.text = "Validate Component '${context.componentName}'"
-        }
-    }
-
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val file = e.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
-        val context = findComponentContext(e) ?: return
-        val stackName = file.nameWithoutExtension
-
-        executeAtmosCommand(project, "validate", "component", context.componentName, "-s", stackName)
-    }
-}
-
-/**
- * Action to run terraform plan for the current component.
- */
-class TerraformPlanAction : AtmosContextAction("Terraform Plan", "Run 'atmos terraform plan' for the component at cursor") {
-
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        if (!e.presentation.isEnabledAndVisible) return
-
-        val context = findComponentContext(e)
-        e.presentation.isEnabledAndVisible = context != null && context.componentType == "terraform"
-        if (context != null) {
-            e.presentation.text = "Terraform Plan '${context.componentName}'"
-        }
-    }
-
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val file = e.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
-        val context = findComponentContext(e) ?: return
-        val stackName = file.nameWithoutExtension
-
-        executeAtmosCommand(project, "terraform", "plan", context.componentName, "-s", stackName)
-    }
-}
-
-/**
- * Action to run terraform apply for the current component.
- */
-class TerraformApplyAction : AtmosContextAction("Terraform Apply", "Run 'atmos terraform apply' for the component at cursor") {
-
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        if (!e.presentation.isEnabledAndVisible) return
-
-        val context = findComponentContext(e)
-        e.presentation.isEnabledAndVisible = context != null && context.componentType == "terraform"
-        if (context != null) {
-            e.presentation.text = "Terraform Apply '${context.componentName}'"
-        }
-    }
-
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val file = e.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
-        val context = findComponentContext(e) ?: return
-        val stackName = file.nameWithoutExtension
-
-        executeAtmosCommand(project, "terraform", "apply", context.componentName, "-s", stackName)
-    }
-}
-
-/**
- * Action to show the describe affected output.
- */
-class DescribeAffectedAction : AtmosContextAction("Describe Affected", "Run 'atmos describe affected' to show affected components") {
-
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        executeAtmosCommand(project, "describe", "affected")
-    }
-}
-
-/**
- * Action to describe all stacks.
- */
-class DescribeStacksAction : AtmosContextAction("Describe Stacks", "Run 'atmos describe stacks'") {
-
+class DescribeStackAction : AtmosContextAction(
+    AtmosBundle.message("action.describe.stack"),
+    AtmosBundle.message("action.describe.stack.description"),
+    AllIcons.Actions.Preview
+) {
     override fun update(e: AnActionEvent) {
         val project = e.project
+        val file = e.getData(CommonDataKeys.PSI_FILE) as? YAMLFile
+
         e.presentation.isEnabledAndVisible = project != null &&
-                AtmosProjectService.getInstance(project).isAtmosProject
+                file != null &&
+                AtmosProjectService.getInstance(project).isStackFile(file.virtualFile)
     }
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        executeAtmosCommand(project, "describe", "stacks")
-    }
-}
+        val file = e.getData(CommonDataKeys.PSI_FILE) as? YAMLFile ?: return
 
-/**
- * Action to run an Atmos workflow.
- */
-class RunWorkflowAction : AtmosContextAction("Run Workflow", "Run an Atmos workflow") {
+        val stackName = deriveStackName(file, project)
+        if (stackName == null) {
+            Messages.showErrorDialog(
+                project,
+                AtmosBundle.message("action.could.not.determine.stack"),
+                AtmosBundle.message("action.describe.stack")
+            )
+            return
+        }
 
-    override fun update(e: AnActionEvent) {
-        val project = e.project
-        e.presentation.isEnabledAndVisible = project != null &&
-                AtmosProjectService.getInstance(project).isAtmosProject
-    }
+        AtmosCommandRunner.getInstance(project).describeStacks()
+            .thenAccept { result ->
+                ApplicationManager.getApplication().invokeLater {
+                    val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Atmos")
+                    toolWindow?.show()
 
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        // TODO: Show dialog to select workflow
-        executeAtmosCommand(project, "workflow", "--help")
+                    if (!result.isSuccess) {
+                        Messages.showErrorDialog(project, result.stderr, "Describe Stack: $stackName")
+                    }
+                }
+            }
     }
 }

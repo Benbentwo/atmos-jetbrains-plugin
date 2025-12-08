@@ -12,13 +12,10 @@
             <li>Syntax highlighting for YAML functions (!env, !exec, !terraform.output, etc.)</li>
             <li>Navigation to imports, components, and variable definitions (Cmd+Click)</li>
             <li>Code completion for imports, components, and variables</li>
-            <li>Inspections for missing imports, unknown components, and circular imports</li>
+            <li>Inspections for missing imports, unknown components, and more</li>
             <li>Gutter icons for inheritance relationships</li>
             <li>Tool window for browsing stacks and components</li>
-            <li>Component Inspector for real-time resolved values</li>
             <li>Run configurations for Atmos CLI commands</li>
-            <li>Quick Documentation (F1/Ctrl+Q) for Atmos elements</li>
-            <li>Context menu actions for common Atmos commands</li>
         </ul>
 
         <h2>Getting Started</h2>
@@ -44,8 +41,6 @@
             serviceImplementation="com.cloudposse.atmos.services.AtmosProjectService"/>
         <projectService
             serviceImplementation="com.cloudposse.atmos.services.AtmosConfigurationService"/>
-        <projectService
-            serviceImplementation="com.cloudposse.atmos.services.AtmosCommandRunner"/>
 
         <!-- Settings UI -->
         <applicationConfigurable
@@ -63,133 +58,58 @@
         <psi.referenceContributor
             language="yaml"
             implementation="com.cloudposse.atmos.navigation.AtmosImportReferenceContributor"/>
-        <psi.referenceContributor
-            language="yaml"
-            implementation="com.cloudposse.atmos.navigation.AtmosComponentReferenceContributor"/>
-
-        <!-- Code Completion -->
-        <completion.contributor
-            language="yaml"
-            implementationClass="com.cloudposse.atmos.completion.AtmosCompletionContributor"/>
-
-        <!-- Line Markers (Gutter Icons) -->
-        <codeInsight.lineMarkerProvider
-            language="yaml"
-            implementationClass="com.cloudposse.atmos.gutter.AtmosLineMarkerProvider"/>
-        <codeInsight.lineMarkerProvider
-            language="yaml"
-            implementationClass="com.cloudposse.atmos.gutter.AtmosVariableOverrideLineMarkerProvider"/>
-
-        <!-- Inspections -->
-        <localInspection
-            language="yaml"
-            groupName="Atmos"
-            shortName="AtmosMissingImport"
-            displayName="Missing import file"
-            enabledByDefault="true"
-            level="ERROR"
-            implementationClass="com.cloudposse.atmos.inspections.AtmosMissingImportInspection"/>
-        <localInspection
-            language="yaml"
-            groupName="Atmos"
-            shortName="AtmosUnknownComponent"
-            displayName="Unknown component"
-            enabledByDefault="true"
-            level="WARNING"
-            implementationClass="com.cloudposse.atmos.inspections.AtmosUnknownComponentInspection"/>
-        <localInspection
-            language="yaml"
-            groupName="Atmos"
-            shortName="AtmosCircularImport"
-            displayName="Circular import"
-            enabledByDefault="true"
-            level="ERROR"
-            implementationClass="com.cloudposse.atmos.inspections.AtmosCircularImportInspection"/>
-
-        <!-- Documentation -->
-        <lang.documentationProvider
-            language="yaml"
-            implementationClass="com.cloudposse.atmos.documentation.AtmosDocumentationProvider"/>
-
-        <!-- Tool Windows -->
-        <toolWindow
-            id="Atmos"
-            anchor="right"
-            icon="com.cloudposse.atmos.AtmosIcons.TOOL_WINDOW"
-            factoryClass="com.cloudposse.atmos.toolwindow.AtmosToolWindowFactory"/>
-        <toolWindow
-            id="Atmos Inspector"
-            anchor="right"
-            secondary="true"
-            icon="com.cloudposse.atmos.AtmosIcons.COMPONENT"
-            factoryClass="com.cloudposse.atmos.toolwindow.AtmosInspectorToolWindowFactory"/>
-
-        <!-- Run Configurations -->
-        <configurationType
-            implementation="com.cloudposse.atmos.cli.AtmosRunConfigurationType"/>
-        <configurationType
-            implementation="com.cloudposse.atmos.run.AtmosRunConfigurationType"/>
 
         <!-- Notifications -->
         <notificationGroup
             id="Atmos"
             displayType="BALLOON"/>
+
+        <!-- Run Configuration -->
+        <configurationType
+            implementation="com.cloudposse.atmos.run.AtmosRunConfigurationType"/>
+
+        <runConfigurationProducer
+            implementation="com.cloudposse.atmos.run.AtmosRunConfigurationProducer"/>
+
+        <!-- Tool Window -->
+        <toolWindow
+            id="Atmos"
+            anchor="right"
+            icon="com.cloudposse.atmos.AtmosIcons.TOOL_WINDOW"
+            factoryClass="com.cloudposse.atmos.toolwindow.AtmosToolWindowFactory"/>
     </extensions>
 
     <actions>
-        <!-- Atmos Action Group - combines context menu and tools menu actions -->
-        <group id="Atmos.ActionGroup"
-               text="Atmos"
-               description="Atmos actions"
-               popup="true"
-               icon="com.cloudposse.atmos.AtmosIcons.ATMOS">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
-
-            <action id="Atmos.DescribeStacks"
-                    class="com.cloudposse.atmos.actions.DescribeStacksAction"
-                    text="Describe Stacks"
-                    description="Run atmos describe stacks"/>
-
-            <action id="Atmos.DescribeStack"
-                    class="com.cloudposse.atmos.actions.DescribeStackAction"
-                    text="Describe This Stack"
-                    description="Run atmos describe stacks for the current file"/>
-
+        <!-- Atmos Action Group -->
+        <group id="Atmos.ContextMenu" text="Atmos" popup="true" icon="com.cloudposse.atmos.AtmosIcons.ATMOS">
             <action id="Atmos.DescribeComponent"
                     class="com.cloudposse.atmos.actions.DescribeComponentAction"
-                    text="Describe Component..."
+                    text="Describe Component"
                     description="Run atmos describe component"/>
-
             <action id="Atmos.ValidateComponent"
                     class="com.cloudposse.atmos.actions.ValidateComponentAction"
-                    text="Validate Component..."
+                    text="Validate Component"
                     description="Run atmos validate component"/>
-
             <separator/>
-
             <action id="Atmos.TerraformPlan"
                     class="com.cloudposse.atmos.actions.TerraformPlanAction"
-                    text="Terraform Plan..."
+                    text="Terraform Plan"
                     description="Run atmos terraform plan"/>
-
             <action id="Atmos.TerraformApply"
                     class="com.cloudposse.atmos.actions.TerraformApplyAction"
-                    text="Terraform Apply..."
+                    text="Terraform Apply"
                     description="Run atmos terraform apply"/>
-
             <separator/>
+            <action id="Atmos.DescribeStack"
+                    class="com.cloudposse.atmos.actions.DescribeStackAction"
+                    text="Describe Stack"
+                    description="Run atmos describe stacks for this stack"/>
 
-            <action id="Atmos.RunWorkflow"
-                    class="com.cloudposse.atmos.actions.RunWorkflowAction"
-                    text="Run Workflow..."
-                    description="Run atmos workflow"/>
+            <!-- Add to Editor Popup Menu -->
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
 
-            <action id="Atmos.DescribeAffected"
-                    class="com.cloudposse.atmos.actions.DescribeAffectedAction"
-                    text="Describe Affected"
-                    description="Run atmos describe affected"/>
+            <!-- Add to Project View Popup Menu -->
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
         </group>
     </actions>
 </idea-plugin>

@@ -2,113 +2,153 @@ package com.cloudposse.atmos.run
 
 import com.cloudposse.atmos.AtmosBundle
 import com.cloudposse.atmos.services.AtmosConfigurationService
-import com.cloudposse.atmos.services.AtmosProjectService
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.FormBuilder
 import java.awt.CardLayout
-import javax.swing.*
+import java.awt.event.ItemEvent
+import javax.swing.JComponent
+import javax.swing.JPanel
 
 /**
- * Settings editor for Atmos run configurations.
+ * Settings editor UI for Atmos run configurations.
  */
 class AtmosRunConfigurationEditor(private val project: Project) : SettingsEditor<AtmosRunConfiguration>() {
 
-    private val commandTypeCombo = ComboBox(AtmosCommandType.values().map { it.displayName }.toTypedArray())
+    private val commandTypeComboBox = ComboBox(AtmosCommandType.values())
     private val componentField = JBTextField()
     private val stackField = JBTextField()
     private val workflowField = JBTextField()
     private val customCommandField = JBTextField()
-    private val additionalArgsField = JBTextField()
+    private val additionalArgumentsField = JBTextField()
+    private val workingDirectoryField = TextFieldWithBrowseButton()
 
-    private val cardLayout = CardLayout()
-    private val cardsPanel = JPanel(cardLayout)
-
-    private val componentStackPanel: JPanel
+    // Panels for different command types
+    private val cardPanel = JPanel(CardLayout())
+    private val terraformPanel: JPanel
+    private val describeStacksPanel: JPanel
+    private val describeComponentPanel: JPanel
     private val workflowPanel: JPanel
     private val customPanel: JPanel
-    private val emptyPanel: JPanel
 
     init {
+        workingDirectoryField.addBrowseFolderListener(
+            AtmosBundle.message("run.configuration.working.directory.title"),
+            AtmosBundle.message("run.configuration.working.directory.description"),
+            project,
+            FileChooserDescriptorFactory.createSingleFolderDescriptor()
+        )
+
         // Create panels for different command types
-        componentStackPanel = FormBuilder.createFormBuilder()
-            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.component")), componentField)
-            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.stack")), stackField)
-            .panel
+        terraformPanel = createTerraformPanel()
+        describeStacksPanel = createDescribeStacksPanel()
+        describeComponentPanel = createDescribeComponentPanel()
+        workflowPanel = createWorkflowPanel()
+        customPanel = createCustomPanel()
 
-        workflowPanel = FormBuilder.createFormBuilder()
-            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.workflow")), workflowField)
-            .panel
+        // Add panels to card layout
+        cardPanel.add(terraformPanel, "terraform")
+        cardPanel.add(describeStacksPanel, "describe_stacks")
+        cardPanel.add(describeComponentPanel, "describe_component")
+        cardPanel.add(workflowPanel, "workflow")
+        cardPanel.add(customPanel, "custom")
 
-        customPanel = FormBuilder.createFormBuilder()
-            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.custom.command")), customCommandField)
-            .panel
-
-        emptyPanel = JPanel()
-
-        cardsPanel.add(componentStackPanel, "COMPONENT_STACK")
-        cardsPanel.add(workflowPanel, "WORKFLOW")
-        cardsPanel.add(customPanel, "CUSTOM")
-        cardsPanel.add(emptyPanel, "EMPTY")
-
-        // Update visible panel when command type changes
-        commandTypeCombo.addActionListener {
-            updateVisiblePanel()
+        // Set up command type listener
+        commandTypeComboBox.addItemListener { event ->
+            if (event.stateChange == ItemEvent.SELECTED) {
+                updateCardPanel()
+            }
         }
-
-        // Populate component/stack suggestions if available
-        populateSuggestions()
     }
 
-    private fun updateVisiblePanel() {
-        val selectedType = AtmosCommandType.fromDisplayName(commandTypeCombo.selectedItem as String)
-        when (selectedType) {
+    private fun createTerraformPanel(): JPanel {
+        return FormBuilder.createFormBuilder()
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.component")), componentField, 1, false)
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.stack")), stackField, 1, false)
+            .panel
+    }
+
+    private fun createDescribeStacksPanel(): JPanel {
+        val stackFilterField = JBTextField()
+        return FormBuilder.createFormBuilder()
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.stack.optional")), stackFilterField, 1, false)
+            .panel
+    }
+
+    private fun createDescribeComponentPanel(): JPanel {
+        val compField = JBTextField()
+        val stkField = JBTextField()
+        return FormBuilder.createFormBuilder()
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.component")), compField, 1, false)
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.stack")), stkField, 1, false)
+            .panel
+    }
+
+    private fun createWorkflowPanel(): JPanel {
+        return FormBuilder.createFormBuilder()
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.workflow.name")), workflowField, 1, false)
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.stack.optional")), stackField, 1, false)
+            .panel
+    }
+
+    private fun createCustomPanel(): JPanel {
+        return FormBuilder.createFormBuilder()
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.custom.command")), customCommandField, 1, false)
+            .panel
+    }
+
+    private fun updateCardPanel() {
+        val cardLayout = cardPanel.layout as CardLayout
+        when (commandTypeComboBox.selectedItem as AtmosCommandType) {
             AtmosCommandType.TERRAFORM_PLAN,
             AtmosCommandType.TERRAFORM_APPLY,
             AtmosCommandType.TERRAFORM_DESTROY,
-            AtmosCommandType.DESCRIBE_COMPONENT,
-            AtmosCommandType.VALIDATE_COMPONENT -> cardLayout.show(cardsPanel, "COMPONENT_STACK")
-            AtmosCommandType.WORKFLOW -> cardLayout.show(cardsPanel, "WORKFLOW")
-            AtmosCommandType.CUSTOM -> cardLayout.show(cardsPanel, "CUSTOM")
-            AtmosCommandType.DESCRIBE_STACKS -> cardLayout.show(cardsPanel, "EMPTY")
+            AtmosCommandType.TERRAFORM_INIT,
+            AtmosCommandType.TERRAFORM_VALIDATE,
+            AtmosCommandType.VALIDATE_COMPONENT -> cardLayout.show(cardPanel, "terraform")
+            AtmosCommandType.DESCRIBE_STACKS,
+            AtmosCommandType.VALIDATE_STACKS -> cardLayout.show(cardPanel, "describe_stacks")
+            AtmosCommandType.DESCRIBE_COMPONENT -> cardLayout.show(cardPanel, "describe_component")
+            AtmosCommandType.WORKFLOW -> cardLayout.show(cardPanel, "workflow")
+            AtmosCommandType.CUSTOM -> cardLayout.show(cardPanel, "custom")
         }
     }
 
-    private fun populateSuggestions() {
-        // Could add auto-completion for components/stacks from the project
-        // For now, leave as free text fields
+    override fun resetEditorFrom(configuration: AtmosRunConfiguration) {
+        commandTypeComboBox.selectedItem = configuration.commandType
+        componentField.text = configuration.component
+        stackField.text = configuration.stack
+        workflowField.text = configuration.workflowName
+        customCommandField.text = configuration.customCommand
+        additionalArgumentsField.text = configuration.additionalArguments
+        workingDirectoryField.text = configuration.workingDirectory.ifBlank {
+            project.basePath ?: ""
+        }
+        updateCardPanel()
     }
 
-    override fun resetEditorFrom(config: AtmosRunConfiguration) {
-        commandTypeCombo.selectedItem = config.commandType.displayName
-        componentField.text = config.component
-        stackField.text = config.stack
-        workflowField.text = config.workflowName
-        customCommandField.text = config.customCommand
-        additionalArgsField.text = config.additionalArguments
-        updateVisiblePanel()
-    }
-
-    override fun applyEditorTo(config: AtmosRunConfiguration) {
-        config.commandType = AtmosCommandType.fromDisplayName(commandTypeCombo.selectedItem as String)
-        config.component = componentField.text
-        config.stack = stackField.text
-        config.workflowName = workflowField.text
-        config.customCommand = customCommandField.text
-        config.additionalArguments = additionalArgsField.text
+    override fun applyEditorTo(configuration: AtmosRunConfiguration) {
+        configuration.commandType = commandTypeComboBox.selectedItem as AtmosCommandType
+        configuration.component = componentField.text
+        configuration.stack = stackField.text
+        configuration.workflowName = workflowField.text
+        configuration.customCommand = customCommandField.text
+        configuration.additionalArguments = additionalArgumentsField.text
+        configuration.workingDirectory = workingDirectoryField.text
     }
 
     override fun createEditor(): JComponent {
         return FormBuilder.createFormBuilder()
-            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.command.type")), commandTypeCombo)
-            .addComponent(cardsPanel)
-            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.additional.args")), additionalArgsField)
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.command.type")), commandTypeComboBox, 1, false)
+            .addComponent(cardPanel)
+            .addSeparator()
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.additional.arguments")), additionalArgumentsField, 1, false)
+            .addLabeledComponent(JBLabel(AtmosBundle.message("run.configuration.working.directory")), workingDirectoryField, 1, false)
             .addComponentFillVertically(JPanel(), 0)
             .panel
     }

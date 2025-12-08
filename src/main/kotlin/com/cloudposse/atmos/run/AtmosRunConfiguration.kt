@@ -1,18 +1,15 @@
 package com.cloudposse.atmos.run
 
-import com.cloudposse.atmos.AtmosIcons
+import com.cloudposse.atmos.AtmosBundle
 import com.cloudposse.atmos.settings.AtmosSettings
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.*
-import com.intellij.execution.process.OSProcessHandler
+import com.intellij.execution.process.ProcessHandler
+import com.intellij.execution.process.ProcessHandlerFactory
 import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.JDOMExternalizerUtil
-import org.jdom.Element
-import java.io.File
-import javax.swing.Icon
 
 /**
  * Run configuration for Atmos CLI commands.
@@ -23,150 +20,258 @@ class AtmosRunConfiguration(
     name: String
 ) : RunConfigurationBase<AtmosRunConfigurationOptions>(project, factory, name) {
 
-    var commandType: AtmosCommandType = AtmosCommandType.TERRAFORM_PLAN
-    var component: String = ""
-    var stack: String = ""
-    var workflowName: String = ""
-    var customCommand: String = ""
-    var additionalArguments: String = ""
-
     override fun getOptions(): AtmosRunConfigurationOptions {
         return super.getOptions() as AtmosRunConfigurationOptions
     }
 
+    var commandType: AtmosCommandType
+        get() = options.commandType
+        set(value) {
+            options.commandType = value
+        }
+
+    var component: String
+        get() = options.component
+        set(value) {
+            options.component = value
+        }
+
+    var stack: String
+        get() = options.stack
+        set(value) {
+            options.stack = value
+        }
+
+    var workflowName: String
+        get() = options.workflowName
+        set(value) {
+            options.workflowName = value
+        }
+
+    var additionalArguments: String
+        get() = options.additionalArguments
+        set(value) {
+            options.additionalArguments = value
+        }
+
+    var customCommand: String
+        get() = options.customCommand
+        set(value) {
+            options.customCommand = value
+        }
+
+    var workingDirectory: String
+        get() = options.workingDirectory
+        set(value) {
+            options.workingDirectory = value
+        }
+
+    var environmentVariables: Map<String, String>
+        get() = options.environmentVariables
+        set(value) {
+            options.environmentVariables = value
+        }
+
     override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> {
         return AtmosRunConfigurationEditor(project)
+    }
+
+    override fun checkConfiguration() {
+        val atmosPath = AtmosSettings.getInstance().getEffectiveAtmosPath()
+        if (atmosPath == null) {
+            throw RuntimeConfigurationError(AtmosBundle.message("run.configuration.error.atmos.not.found"))
+        }
+
+        when (commandType) {
+            AtmosCommandType.TERRAFORM_PLAN,
+            AtmosCommandType.TERRAFORM_APPLY,
+            AtmosCommandType.TERRAFORM_DESTROY,
+            AtmosCommandType.TERRAFORM_INIT,
+            AtmosCommandType.TERRAFORM_VALIDATE,
+            AtmosCommandType.DESCRIBE_COMPONENT,
+            AtmosCommandType.VALIDATE_COMPONENT -> {
+                if (component.isBlank()) {
+                    throw RuntimeConfigurationError(AtmosBundle.message("run.configuration.error.component.required"))
+                }
+                if (stack.isBlank()) {
+                    throw RuntimeConfigurationError(AtmosBundle.message("run.configuration.error.stack.required"))
+                }
+            }
+            AtmosCommandType.WORKFLOW -> {
+                if (workflowName.isBlank()) {
+                    throw RuntimeConfigurationError(AtmosBundle.message("run.configuration.error.workflow.required"))
+                }
+            }
+            AtmosCommandType.CUSTOM -> {
+                if (customCommand.isBlank()) {
+                    throw RuntimeConfigurationError(AtmosBundle.message("run.configuration.error.custom.command.required"))
+                }
+            }
+            AtmosCommandType.DESCRIBE_STACKS,
+            AtmosCommandType.VALIDATE_STACKS -> {
+                // No additional validation required
+            }
+        }
     }
 
     override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
         return AtmosRunProfileState(this, environment)
     }
 
-    override fun readExternal(element: Element) {
-        super.readExternal(element)
-        commandType = AtmosCommandType.valueOf(
-            JDOMExternalizerUtil.readField(element, "commandType") ?: AtmosCommandType.TERRAFORM_PLAN.name
-        )
-        component = JDOMExternalizerUtil.readField(element, "component") ?: ""
-        stack = JDOMExternalizerUtil.readField(element, "stack") ?: ""
-        workflowName = JDOMExternalizerUtil.readField(element, "workflowName") ?: ""
-        customCommand = JDOMExternalizerUtil.readField(element, "customCommand") ?: ""
-        additionalArguments = JDOMExternalizerUtil.readField(element, "additionalArguments") ?: ""
-    }
+    /**
+     * Builds the full command line for this configuration.
+     */
+    fun buildCommandLine(): List<String> {
+        val commands = mutableListOf<String>()
 
-    override fun writeExternal(element: Element) {
-        super.writeExternal(element)
-        JDOMExternalizerUtil.writeField(element, "commandType", commandType.name)
-        JDOMExternalizerUtil.writeField(element, "component", component)
-        JDOMExternalizerUtil.writeField(element, "stack", stack)
-        JDOMExternalizerUtil.writeField(element, "workflowName", workflowName)
-        JDOMExternalizerUtil.writeField(element, "customCommand", customCommand)
-        JDOMExternalizerUtil.writeField(element, "additionalArguments", additionalArguments)
-    }
-
-    override fun checkConfiguration() {
         when (commandType) {
             AtmosCommandType.TERRAFORM_PLAN,
             AtmosCommandType.TERRAFORM_APPLY,
             AtmosCommandType.TERRAFORM_DESTROY,
-            AtmosCommandType.DESCRIBE_COMPONENT,
-            AtmosCommandType.VALIDATE_COMPONENT -> {
-                if (component.isBlank()) {
-                    throw RuntimeConfigurationError("Component is required")
-                }
-                if (stack.isBlank()) {
-                    throw RuntimeConfigurationError("Stack is required")
-                }
-            }
-            AtmosCommandType.WORKFLOW -> {
-                if (workflowName.isBlank()) {
-                    throw RuntimeConfigurationError("Workflow name is required")
-                }
-            }
-            AtmosCommandType.CUSTOM -> {
-                if (customCommand.isBlank()) {
-                    throw RuntimeConfigurationError("Custom command is required")
-                }
+            AtmosCommandType.TERRAFORM_INIT,
+            AtmosCommandType.TERRAFORM_VALIDATE -> {
+                commands.addAll(commandType.command.split(" "))
+                commands.add(component)
+                commands.add("-s")
+                commands.add(stack)
             }
             AtmosCommandType.DESCRIBE_STACKS -> {
-                // No additional requirements
-            }
-        }
-
-        if (AtmosSettings.getInstance().getEffectiveAtmosPath() == null) {
-            throw RuntimeConfigurationWarning("Atmos executable not found. Please configure it in Settings > Tools > Atmos.")
-        }
-    }
-
-    /**
-     * Builds the command line arguments for this configuration.
-     */
-    fun buildCommandLineArgs(): List<String> {
-        val args = mutableListOf<String>()
-
-        when (commandType) {
-            AtmosCommandType.TERRAFORM_PLAN -> {
-                args.addAll(listOf("terraform", "plan", component, "-s", stack))
-            }
-            AtmosCommandType.TERRAFORM_APPLY -> {
-                args.addAll(listOf("terraform", "apply", component, "-s", stack))
-            }
-            AtmosCommandType.TERRAFORM_DESTROY -> {
-                args.addAll(listOf("terraform", "destroy", component, "-s", stack))
-            }
-            AtmosCommandType.DESCRIBE_STACKS -> {
-                args.addAll(listOf("describe", "stacks"))
+                commands.addAll(commandType.command.split(" "))
+                if (stack.isNotBlank()) {
+                    commands.add("--stack")
+                    commands.add(stack)
+                }
             }
             AtmosCommandType.DESCRIBE_COMPONENT -> {
-                args.addAll(listOf("describe", "component", component, "-s", stack))
+                commands.addAll(commandType.command.split(" "))
+                commands.add(component)
+                commands.add("-s")
+                commands.add(stack)
             }
             AtmosCommandType.VALIDATE_COMPONENT -> {
-                args.addAll(listOf("validate", "component", component, "-s", stack))
+                commands.addAll(commandType.command.split(" "))
+                commands.add(component)
+                commands.add("-s")
+                commands.add(stack)
+            }
+            AtmosCommandType.VALIDATE_STACKS -> {
+                commands.addAll(commandType.command.split(" "))
             }
             AtmosCommandType.WORKFLOW -> {
-                args.addAll(listOf("workflow", workflowName))
+                commands.add("workflow")
+                commands.add(workflowName)
+                if (stack.isNotBlank()) {
+                    commands.add("-s")
+                    commands.add(stack)
+                }
             }
             AtmosCommandType.CUSTOM -> {
-                args.addAll(customCommand.split("\\s+".toRegex()))
+                commands.addAll(customCommand.split("\\s+".toRegex()))
             }
         }
 
         if (additionalArguments.isNotBlank()) {
-            args.addAll(additionalArguments.split("\\s+".toRegex()))
+            commands.addAll(additionalArguments.split("\\s+".toRegex()))
         }
 
-        return args
+        return commands
     }
 }
 
 /**
- * Run profile state for Atmos command execution.
+ * Options for Atmos run configuration (persisted state).
+ */
+class AtmosRunConfigurationOptions : RunConfigurationOptions() {
+    private var _commandType: String = AtmosCommandType.TERRAFORM_PLAN.name
+    private var _component: String = ""
+    private var _stack: String = ""
+    private var _workflowName: String = ""
+    private var _additionalArguments: String = ""
+    private var _customCommand: String = ""
+    private var _workingDirectory: String = ""
+    private var _environmentVariables: MutableMap<String, String> = mutableMapOf()
+
+    var commandType: AtmosCommandType
+        get() = try {
+            AtmosCommandType.valueOf(_commandType)
+        } catch (e: IllegalArgumentException) {
+            AtmosCommandType.TERRAFORM_PLAN
+        }
+        set(value) {
+            _commandType = value.name
+        }
+
+    var component: String
+        get() = _component
+        set(value) {
+            _component = value
+        }
+
+    var stack: String
+        get() = _stack
+        set(value) {
+            _stack = value
+        }
+
+    var workflowName: String
+        get() = _workflowName
+        set(value) {
+            _workflowName = value
+        }
+
+    var additionalArguments: String
+        get() = _additionalArguments
+        set(value) {
+            _additionalArguments = value
+        }
+
+    var customCommand: String
+        get() = _customCommand
+        set(value) {
+            _customCommand = value
+        }
+
+    var workingDirectory: String
+        get() = _workingDirectory
+        set(value) {
+            _workingDirectory = value
+        }
+
+    var environmentVariables: Map<String, String>
+        get() = _environmentVariables
+        set(value) {
+            _environmentVariables = value.toMutableMap()
+        }
+}
+
+/**
+ * Run profile state for executing Atmos commands.
  */
 class AtmosRunProfileState(
     private val configuration: AtmosRunConfiguration,
     private val environment: ExecutionEnvironment
 ) : CommandLineState(environment) {
 
-    override fun startProcess(): OSProcessHandler {
+    override fun startProcess(): ProcessHandler {
         val atmosPath = AtmosSettings.getInstance().getEffectiveAtmosPath()
-            ?: throw RuntimeConfigurationError("Atmos executable not found")
-
-        val workingDir = environment.project.basePath?.let { File(it) }
-            ?: throw RuntimeConfigurationError("Project working directory not found")
+            ?: throw RuntimeConfigurationError(AtmosBundle.message("run.configuration.error.atmos.not.found"))
 
         val commandLine = GeneralCommandLine(atmosPath)
-            .withParameters(configuration.buildCommandLineArgs())
-            .withWorkDirectory(workingDir)
+            .withParameters(configuration.buildCommandLine())
+            .withWorkDirectory(getWorkingDirectory())
+            .withEnvironment(configuration.environmentVariables)
             .withCharset(Charsets.UTF_8)
-            .withEnvironment("TERM", "xterm-256color")
 
-        val handler = OSProcessHandler(commandLine)
+        val handler = ProcessHandlerFactory.getInstance().createColoredProcessHandler(commandLine)
         ProcessTerminatedListener.attach(handler)
         return handler
     }
-}
 
-/**
- * Options class for Atmos run configuration persistence.
- */
-class AtmosRunConfigurationOptions : RunConfigurationOptions()
+    private fun getWorkingDirectory(): String {
+        val workDir = configuration.workingDirectory
+        if (workDir.isNotBlank()) {
+            return workDir
+        }
+        return environment.project.basePath ?: System.getProperty("user.dir")
+    }
+}
