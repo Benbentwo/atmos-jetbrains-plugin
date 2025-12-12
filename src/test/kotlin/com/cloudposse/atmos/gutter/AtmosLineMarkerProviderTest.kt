@@ -3,6 +3,7 @@ package com.cloudposse.atmos.gutter
 import com.cloudposse.atmos.AtmosTestBase
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerImpl
+import org.junit.Assert.assertTrue
 
 /**
  * Tests for Atmos gutter icons (line markers).

@@ -1,6 +1,7 @@
 package com.cloudposse.atmos.inspections
 
 import com.cloudposse.atmos.AtmosTestBase
+import org.junit.Assert.assertTrue
 
 /**
  * Tests for the AtmosMissingImportInspection.

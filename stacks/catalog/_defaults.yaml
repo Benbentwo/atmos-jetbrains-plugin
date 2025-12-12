@@ -1,0 +1,11 @@
+# Default settings for all stacks
+vars:
+  # Common tags applied to all resources
+  tags:
+    ManagedBy: "Atmos"
+    Terraform: "true"
+
+settings:
+  spacelift:
+    workspace_enabled: true
+    autodeploy: false

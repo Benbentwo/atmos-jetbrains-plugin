@@ -2,6 +2,9 @@ package com.cloudposse.atmos.navigation
 
 import com.cloudposse.atmos.AtmosTestBase
 import com.intellij.psi.PsiFile
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 
 /**
  * Tests for import navigation functionality.

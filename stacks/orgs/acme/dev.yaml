@@ -1,0 +1,39 @@
+import:
+  - orgs/acme/_defaults
+
+vars:
+  stage: dev
+
+components:
+  terraform:
+    # VPC configuration for dev
+    vpc/dev:
+      metadata:
+        component: vpc
+        inherits:
+          - vpc
+      vars:
+        name: acme-dev-vpc
+        cidr_block: "10.10.0.0/16"
+        nat_gateway_enabled: true
+        tags:
+          Environment: "dev"
+    
+    # EKS cluster for dev
+    eks/dev:
+      metadata:
+        component: eks/cluster
+        inherits:
+          - eks
+      vars:
+        name: acme-dev-eks
+        kubernetes_version: "1.28"
+        node_groups:
+          main:
+            desired_size: 2
+            min_size: 1
+            max_size: 3
+            instance_types:
+              - t3.small
+        tags:
+          Environment: "dev"

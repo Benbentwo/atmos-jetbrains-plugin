@@ -1,0 +1,54 @@
+import:
+  - orgs/acme/_defaults
+  - catalog/rds
+
+vars:
+  stage: staging
+
+components:
+  terraform:
+    # VPC configuration for staging
+    vpc/staging:
+      metadata:
+        component: vpc
+        inherits:
+          - vpc
+      vars:
+        name: acme-staging-vpc
+        cidr_block: "10.20.0.0/16"
+        nat_gateway_enabled: true
+        tags:
+          Environment: "staging"
+    
+    # EKS cluster for staging
+    eks/staging:
+      metadata:
+        component: eks/cluster
+        inherits:
+          - eks
+      vars:
+        name: acme-staging-eks
+        kubernetes_version: "1.28"
+        node_groups:
+          main:
+            desired_size: 3
+            min_size: 2
+            max_size: 5
+            instance_types:
+              - t3.medium
+        tags:
+          Environment: "staging"
+    
+    # RDS database for staging
+    rds/staging:
+      metadata:
+        component: rds
+        inherits:
+          - rds-postgres
+      vars:
+        name: acme-staging-db
+        instance_class: db.t3.medium
+        allocated_storage: 100
+        multi_az: true
+        tags:
+          Environment: "staging"

@@ -1,0 +1,21 @@
+import:
+  - orgs/acme/_defaults
+
+vars:
+  stage: dev
+
+components:
+  terraform:
+    # VPC configuration for dev
+    vpc/dev/network:
+      metadata:
+        component: vpc
+        inherits:
+          - vpc
+      vars:
+        name: acme-dev-vpc
+        cidr_block: "10.10.0.0/16"
+        nat_gateway_enabled: true
+        tags:
+          Environment: "dev"
+    

@@ -1,6 +1,9 @@
 package com.cloudposse.atmos.services
 
 import com.cloudposse.atmos.AtmosTestBase
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertEquals
 
 /**
  * Tests for AtmosProjectService.

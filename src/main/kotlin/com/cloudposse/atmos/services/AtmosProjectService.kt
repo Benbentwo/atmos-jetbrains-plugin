@@ -59,6 +59,8 @@ class AtmosProjectService(private val project: Project) {
 
     /**
      * Checks if a file is within the stacks directory.
+     * For more sophisticated stack file detection (with include/exclude patterns),
+     * use AtmosStackService.isStackFile() instead.
      */
     fun isStackFile(file: VirtualFile): Boolean {
         val configService = AtmosConfigurationService.getInstance(project)

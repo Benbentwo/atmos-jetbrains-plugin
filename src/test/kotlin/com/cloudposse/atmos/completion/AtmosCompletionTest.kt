@@ -1,6 +1,7 @@
 package com.cloudposse.atmos.completion
 
 import com.cloudposse.atmos.AtmosTestBase
+import org.junit.Assert.assertTrue
 
 /**
  * Tests for Atmos code completion.

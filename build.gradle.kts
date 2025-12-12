@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.kotlinxSerializationJson)
 
     testImplementation(libs.junitJupiter)
+    testImplementation(libs.junit4)
     testImplementation(libs.mockk)
 
     intellijPlatform {

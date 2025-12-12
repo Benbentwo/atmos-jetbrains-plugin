@@ -1,0 +1,67 @@
+import:
+  - orgs/acme/_defaults
+  - catalog/rds
+
+vars:
+  stage: prod
+
+components:
+  terraform:
+    # VPC configuration for production
+    vpc/prod:
+      metadata:
+        component: vpc
+        inherits:
+          - vpc
+      vars:
+        name: acme-prod-vpc
+        cidr_block: "10.30.0.0/16"
+        nat_gateway_enabled: true
+        tags:
+          Environment: "prod"
+          CriticalInfrastructure: "true"
+    
+    # EKS cluster for production
+    eks/prod:
+      metadata:
+        component: eks/cluster
+        inherits:
+          - eks
+      vars:
+        name: acme-prod-eks
+        kubernetes_version: "1.28"
+        cluster_endpoint_public_access: false  # Private only for prod
+        node_groups:
+          main:
+            desired_size: 5
+            min_size: 3
+            max_size: 10
+            instance_types:
+              - t3.large
+          spot:
+            desired_size: 3
+            min_size: 0
+            max_size: 10
+            instance_types:
+              - t3.large
+            capacity_type: SPOT
+        tags:
+          Environment: "prod"
+          CriticalInfrastructure: "true"
+    
+    # RDS database for production
+    rds/prod:
+      metadata:
+        component: rds
+        inherits:
+          - rds-postgres
+      vars:
+        name: acme-prod-db
+        instance_class: db.r6g.xlarge
+        allocated_storage: 500
+        multi_az: true
+        backup_retention_period: 30
+        deletion_protection: true
+        tags:
+          Environment: "prod"
+          CriticalInfrastructure: "true"
