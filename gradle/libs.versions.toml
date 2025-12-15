@@ -3,7 +3,7 @@
 kotlin = "2.2.0"
 
 # IntelliJ Platform
-intellijPlatform = "2.3.0"
+intellijPlatform = "2.10.5"
 
 # Libraries
 kotlinxCoroutines = "1.8.1"
