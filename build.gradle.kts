@@ -119,9 +119,10 @@ tasks {
     // See: https://github.com/JetBrains/intellij-platform-gradle-plugin/issues/1794
     withType<Test>().configureEach {
         jvmArgs("-Dkotlinx.coroutines.debug=off")
-        doFirst {
-            // Filter out the coroutines-javaagent from JVM arguments
-            jvmArgs = jvmArgs.orEmpty().filterNot { it.contains("coroutines-javaagent") }
+        // Remove jvmArgumentProviders that add the coroutines-javaagent
+        jvmArgumentProviders.removeIf { provider ->
+            provider.javaClass.name.contains("Coroutines") ||
+            provider.asArguments().any { it.contains("coroutines-javaagent") }
         }
     }
 }
