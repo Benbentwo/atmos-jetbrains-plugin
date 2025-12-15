@@ -29,7 +29,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Build Plugin and Run Tests
-        run: ./gradlew buildPlugin check --build-cache
+        run: ./gradlew buildPlugin check --build-cache -x buildSearchableOptions
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
