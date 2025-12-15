@@ -276,20 +276,38 @@ class AtmosToolWindowPanel(private val project: Project) : JPanel(BorderLayout()
 
     private fun parseStackInstances(output: String) {
         try {
-            // Parse CSV format: Component,Stack
-            val lines = output.lines().filter { it.isNotBlank() }
-            if (lines.size < 2) {
-                statusLabel.text = "No stack instances found"
+            // Debug: Log the raw output
+            println("DEBUG: Raw output from atmos list instances:")
+            println(output)
+            
+            // Parse JSON format from atmos list instances --format json
+            val json = Json.parseToJsonElement(output)
+            if (json !is JsonArray) {
+                statusLabel.text = "Invalid response format: expected JsonArray, got ${json::class.simpleName}"
                 return
             }
             
             val instances = mutableListOf<StackInstance>()
-            for (i in 1 until lines.size) { // Skip header
-                val parts = lines[i].split(',', limit = 2)
-                if (parts.size == 2) {
-                    instances.add(StackInstance(parts[0], parts[1]))
+            for (element in json) {
+                if (element is JsonObject) {
+                    val component = element["Component"]?.jsonPrimitive?.content
+                    val stack = element["Stack"]?.jsonPrimitive?.content
+                    
+                    println("DEBUG: Parsed component='$component', stack='$stack'")
+                    
+                    if (component != null && stack != null) {
+                        instances.add(StackInstance(component, stack))
+                    }
                 }
             }
+            
+            if (instances.isEmpty()) {
+                statusLabel.text = "No stack instances found"
+                return
+            }
+            
+            println("DEBUG: Created ${instances.size} instances")
+            instances.forEach { println("DEBUG: Instance - component='${it.component}', stack='${it.stack}'") }
             
             stackInstances.set(instances)
             buildStackTree(instances)
@@ -308,14 +326,17 @@ class AtmosToolWindowPanel(private val project: Project) : JPanel(BorderLayout()
         // Group instances by stack
         val stackGroups = instances.groupBy { it.stack }
         
+        println("DEBUG: Building tree with ${stackGroups.size} stack groups")
+        
         for ((stackName, stackComponents) in stackGroups.toSortedMap()) {
+            println("DEBUG: Stack '$stackName' has ${stackComponents.size} components")
             val stackNode = DefaultMutableTreeNode(StackInfo(stackName))
             
             // Sort components within each stack
             for (instance in stackComponents.sortedBy { it.component }) {
-                val componentNode = DefaultMutableTreeNode(
-                    ComponentInfo(instance.component, stackName, "terraform")
-                )
+                val componentInfo = ComponentInfo(instance.component, stackName, "terraform")
+                println("DEBUG: Creating ComponentInfo - name='${componentInfo.componentName}', stack='${componentInfo.stackName}', toString='${componentInfo.toString()}'")
+                val componentNode = DefaultMutableTreeNode(componentInfo)
                 stackNode.add(componentNode)
             }
             
@@ -537,13 +558,16 @@ class StackTreeCellRenderer : javax.swing.tree.DefaultTreeCellRenderer() {
             is StackInfo -> {
                 icon = AtmosIcons.STACK_FOLDER
                 text = nodeData.stackName
+                println("DEBUG: Rendering StackInfo - stackName='${nodeData.stackName}', text='$text'")
             }
             is ComponentInfo -> {
                 icon = AtmosIcons.COMPONENT
                 text = nodeData.componentName
+                println("DEBUG: Rendering ComponentInfo - componentName='${nodeData.componentName}', text='$text'")
             }
             else -> {
                 icon = AtmosIcons.STACK_FOLDER
+                println("DEBUG: Rendering unknown nodeData type: ${nodeData?.let { it::class.simpleName }} - '$nodeData'")
             }
         }
 
