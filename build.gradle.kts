@@ -112,4 +112,16 @@ tasks {
     test {
         useJUnitPlatform()
     }
+
+    // Workaround for coroutines-javaagent compatibility issue with IntelliJ Platform 2025.2
+    // The coroutines-javaagent bundled with the plugin uses an older API that's incompatible
+    // with the kotlinx.coroutines version in IntelliJ 2025.2
+    // See: https://github.com/JetBrains/intellij-platform-gradle-plugin/issues/1794
+    withType<Test>().configureEach {
+        jvmArgs("-Dkotlinx.coroutines.debug=off")
+        doFirst {
+            // Filter out the coroutines-javaagent from JVM arguments
+            jvmArgs = jvmArgs.orEmpty().filterNot { it.contains("coroutines-javaagent") }
+        }
+    }
 }
