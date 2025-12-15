@@ -104,6 +104,15 @@ changelog {
     repositoryUrl = providers.gradleProperty("pluginRepositoryUrl")
 }
 
+// Custom CommandLineArgumentProvider that wraps another provider and filters out coroutines-javaagent
+class FilteredArgumentProvider(
+    private val delegate: CommandLineArgumentProvider
+) : CommandLineArgumentProvider {
+    override fun asArguments(): Iterable<String> {
+        return delegate.asArguments().filterNot { it.contains("coroutines-javaagent") }
+    }
+}
+
 tasks {
     wrapper {
         gradleVersion = "8.13"
@@ -119,10 +128,11 @@ tasks {
     // See: https://github.com/JetBrains/intellij-platform-gradle-plugin/issues/1794
     withType<Test>().configureEach {
         jvmArgs("-Dkotlinx.coroutines.debug=off")
-        // Remove jvmArgumentProviders that add the coroutines-javaagent
-        jvmArgumentProviders.removeIf { provider ->
-            provider.javaClass.name.contains("Coroutines") ||
-            provider.asArguments().any { it.contains("coroutines-javaagent") }
+        // Wrap providers to filter out coroutines-javaagent while keeping other arguments
+        val originalProviders = jvmArgumentProviders.toList()
+        jvmArgumentProviders.clear()
+        originalProviders.forEach { provider ->
+            jvmArgumentProviders.add(FilteredArgumentProvider(provider))
         }
     }
 }
