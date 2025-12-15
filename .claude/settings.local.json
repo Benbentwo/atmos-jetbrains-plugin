@@ -5,7 +5,8 @@
       "Bash(atmos list instances:*)",
       "Read(//Users/bensmith/dev/src/github.com/Benbentwo/atmos-extension/**)",
       "Bash(cat:*)",
-      "Bash(atmos describe:*)"
+      "Bash(atmos describe:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

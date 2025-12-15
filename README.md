@@ -1,6 +1,6 @@
 # Atmos Plugin for JetBrains IDEs
 
-[![Build](https://github.com/cloudposse/atmos-jetbrains-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/cloudposse/atmos-jetbrains-plugin/actions/workflows/build.yml)
+[![Build](https://github.com/Benbentwo/atmos-jetbrains-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/Benbentwo/atmos-jetbrains-plugin/actions/workflows/build.yml)
 
 First-class IDE support for [Atmos](https://atmos.tools/) - the ultimate DevOps framework for Terraform, OpenTofu, Packer, and Helmfile orchestration.
 
@@ -72,7 +72,7 @@ First-class IDE support for [Atmos](https://atmos.tools/) - the ultimate DevOps 
 
 ### Manual Installation
 
-1. Download the latest release from the [Releases](https://github.com/cloudposse/atmos-jetbrains-plugin/releases) page
+1. Download the latest release from the [Releases](https://github.com/Benbentwo/atmos-jetbrains-plugin/releases) page
 2. Go to **Settings/Preferences > Plugins > Settings icon > Install Plugin from Disk...**
 3. Select the downloaded `.zip` file
 

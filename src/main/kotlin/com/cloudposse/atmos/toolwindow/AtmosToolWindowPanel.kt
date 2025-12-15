@@ -19,6 +19,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.ColoredTreeCellRenderer
@@ -189,7 +190,7 @@ class AtmosToolWindowPanel(private val project: Project) : JPanel(BorderLayout()
                                 val stackFilePath = stacksDir.findFileByRelativePath(fileName)
                                 if (stackFilePath != null) {
                                     statusLabel.text = "Opening stack file: $fileName"
-                                    FileEditorManager.getInstance(project).openFile(stackFilePath, true)
+                                    navigateToComponentDefinitionInFile(stackFilePath, componentInfo)
                                     return
                                 }
                             }
@@ -209,6 +210,70 @@ class AtmosToolWindowPanel(private val project: Project) : JPanel(BorderLayout()
             }
         } catch (e: Exception) {
             statusLabel.text = "Error parsing component description: ${e.message}"
+        }
+    }
+    
+    /**
+     * Navigate to the specific line in the stack file where the component instance is defined.
+     */
+    private fun navigateToComponentDefinitionInFile(stackFile: VirtualFile, componentInfo: ComponentInfo) {
+        try {
+            // Read the stack file content to find the component instance line
+            val fileContent = String(stackFile.contentsToByteArray())
+            val lines = fileContent.split('\n')
+            
+            // Look for the component instance definition
+            // Format: "    componentName:" under "components:" -> "terraform:" section
+            var lineNumber = 0
+            var inComponentsSection = false
+            var inTerraformSection = false
+            
+            for (i in lines.indices) {
+                val line = lines[i].trimStart()
+                val originalLine = lines[i]
+                
+                // Check if we're entering the components section
+                if (line.startsWith("components:")) {
+                    inComponentsSection = true
+                    continue
+                }
+                
+                // Check if we're entering the terraform subsection within components
+                if (inComponentsSection && line.startsWith("terraform:")) {
+                    inTerraformSection = true
+                    continue
+                }
+                
+                // If we're in the right section, look for our component instance
+                if (inComponentsSection && inTerraformSection) {
+                    // Component instance definitions start with the instance name followed by ":"
+                    val componentInstancePattern = "${componentInfo.componentName}:"
+                    if (line.startsWith(componentInstancePattern)) {
+                        lineNumber = i + 1 // Line numbers are 1-based
+                        break
+                    }
+                    
+                    // If we hit another top-level section, we're done
+                    if (originalLine.isNotEmpty() && !originalLine.startsWith(" ") && !originalLine.startsWith("\t") && originalLine != "components:" && originalLine != "  terraform:") {
+                        break
+                    }
+                }
+            }
+            
+            // Open the file and navigate to the specific line
+            if (lineNumber > 0) {
+                val descriptor = OpenFileDescriptor(project, stackFile, lineNumber - 1, 0) // OpenFileDescriptor uses 0-based line numbers
+                FileEditorManager.getInstance(project).openTextEditor(descriptor, true)
+                statusLabel.text = "Navigated to ${componentInfo.componentName} at line $lineNumber in ${stackFile.name}"
+            } else {
+                // Fallback: just open the file without specific line navigation
+                FileEditorManager.getInstance(project).openFile(stackFile, true)
+                statusLabel.text = "Opened ${stackFile.name} (component definition not found in expected location)"
+            }
+        } catch (e: Exception) {
+            // Fallback: just open the file
+            FileEditorManager.getInstance(project).openFile(stackFile, true)
+            statusLabel.text = "Opened ${stackFile.name} (error finding component line: ${e.message})"
         }
     }
 
@@ -276,12 +341,14 @@ class AtmosToolWindowPanel(private val project: Project) : JPanel(BorderLayout()
 
     private fun parseStackInstances(output: String) {
         try {
-            // Debug: Log the raw output
-            println("DEBUG: Raw output from atmos list instances:")
-            println(output)
+            // Handle edge case of empty output
+            if (output.trim().isEmpty()) {
+                statusLabel.text = "No output from atmos command"
+                return
+            }
             
             // Parse JSON format from atmos list instances --format json
-            val json = Json.parseToJsonElement(output)
+            val json = Json.parseToJsonElement(output.trim())
             if (json !is JsonArray) {
                 statusLabel.text = "Invalid response format: expected JsonArray, got ${json::class.simpleName}"
                 return
@@ -293,9 +360,7 @@ class AtmosToolWindowPanel(private val project: Project) : JPanel(BorderLayout()
                     val component = element["Component"]?.jsonPrimitive?.content
                     val stack = element["Stack"]?.jsonPrimitive?.content
                     
-                    println("DEBUG: Parsed component='$component', stack='$stack'")
-                    
-                    if (component != null && stack != null) {
+                    if (component != null && stack != null && component.isNotBlank() && stack.isNotBlank()) {
                         instances.add(StackInstance(component, stack))
                     }
                 }
@@ -305,9 +370,6 @@ class AtmosToolWindowPanel(private val project: Project) : JPanel(BorderLayout()
                 statusLabel.text = "No stack instances found"
                 return
             }
-            
-            println("DEBUG: Created ${instances.size} instances")
-            instances.forEach { println("DEBUG: Instance - component='${it.component}', stack='${it.stack}'") }
             
             stackInstances.set(instances)
             buildStackTree(instances)
@@ -326,16 +388,12 @@ class AtmosToolWindowPanel(private val project: Project) : JPanel(BorderLayout()
         // Group instances by stack
         val stackGroups = instances.groupBy { it.stack }
         
-        println("DEBUG: Building tree with ${stackGroups.size} stack groups")
-        
         for ((stackName, stackComponents) in stackGroups.toSortedMap()) {
-            println("DEBUG: Stack '$stackName' has ${stackComponents.size} components")
             val stackNode = DefaultMutableTreeNode(StackInfo(stackName))
             
             // Sort components within each stack
             for (instance in stackComponents.sortedBy { it.component }) {
                 val componentInfo = ComponentInfo(instance.component, stackName, "terraform")
-                println("DEBUG: Creating ComponentInfo - name='${componentInfo.componentName}', stack='${componentInfo.stackName}', toString='${componentInfo.toString()}'")
                 val componentNode = DefaultMutableTreeNode(componentInfo)
                 stackNode.add(componentNode)
             }
@@ -558,16 +616,14 @@ class StackTreeCellRenderer : javax.swing.tree.DefaultTreeCellRenderer() {
             is StackInfo -> {
                 icon = AtmosIcons.STACK_FOLDER
                 text = nodeData.stackName
-                println("DEBUG: Rendering StackInfo - stackName='${nodeData.stackName}', text='$text'")
             }
             is ComponentInfo -> {
                 icon = AtmosIcons.COMPONENT
                 text = nodeData.componentName
-                println("DEBUG: Rendering ComponentInfo - componentName='${nodeData.componentName}', text='$text'")
             }
             else -> {
                 icon = AtmosIcons.STACK_FOLDER
-                println("DEBUG: Rendering unknown nodeData type: ${nodeData?.let { it::class.simpleName }} - '$nodeData'")
+                text = nodeData?.toString() ?: "Unknown"
             }
         }
 
