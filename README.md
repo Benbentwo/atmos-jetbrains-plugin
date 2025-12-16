@@ -2,6 +2,10 @@
 
 [![Build](https://github.com/Benbentwo/atmos-jetbrains-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/Benbentwo/atmos-jetbrains-plugin/actions/workflows/build.yml)
 
+> **⚠️ Work in Progress**
+>
+> This plugin is currently under active development and is not considered stable yet. Features may change, break, or be incomplete. Use at your own risk and please report any issues you encounter.
+
 First-class IDE support for [Atmos](https://atmos.tools/) - the ultimate DevOps framework for Terraform, OpenTofu, Packer, and Helmfile orchestration.
 
 <!-- Plugin description -->
