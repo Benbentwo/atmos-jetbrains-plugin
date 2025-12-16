@@ -6,7 +6,9 @@
       "Read(//Users/bensmith/dev/src/github.com/Benbentwo/atmos-extension/**)",
       "Bash(cat:*)",
       "Bash(atmos describe:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
